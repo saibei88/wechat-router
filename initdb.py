@@ -3,7 +3,7 @@
 import MySQLdb
  
 try:
-    conn=MySQLdb.connect(host='localhost',user='root',passwd='236788',db='test',port=3306)
+    conn=MySQLdb.connect(host='localhost',user='test',passwd='test',db='test',port=3306)
     cur=conn.cursor()
     cur.execute('create table in_data(\
 id int(11) AUTO_INCREMENT PRIMARY KEY, \

@@ -25,8 +25,8 @@ from wechathandlers import GetDataFromWechat,SendDataToWechat
 
 define("mysql_host", default="127.0.0.1:3306", help="blog database host")
 define("mysql_database", default="test", help="blog database name")
-define("mysql_user", default="root", help="blog database user")
-define("mysql_password", default="236788", help="blog database password")
+define("mysql_user", default="test", help="blog database user")
+define("mysql_password", default="test", help="blog database password")
 
 class Application(tornado.web.Application):
     def __init__(self):
