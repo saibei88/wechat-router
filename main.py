@@ -22,11 +22,12 @@ import torndb
 
 from auth import AuthLoginHandler,AuthLogoutHandler,BaseHandler 
 from wechathandlers import GetDataFromWechat,SendDataToWechat
+from settings import DATABASE
 
-define("mysql_host", default="127.0.0.1:3306", help="blog database host")
-define("mysql_database", default="test", help="blog database name")
-define("mysql_user", default="test", help="blog database user")
-define("mysql_password", default="test", help="blog database password")
+define("mysql_host", default = DATABASE.get("host","localhost") + ":" + str(DATABASE.get("port","3306")), help="blog database host")
+define("mysql_database", default= DATABASE.get("database","test") , help="blog database name")
+define("mysql_user", default = DATABASE.get("username","test"), help="blog database user")
+define("mysql_password", default = DATABASE.get("password","test"), help="blog database password")
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -35,12 +36,32 @@ class Application(tornado.web.Application):
             (r"/auth/login", AuthLoginHandler),
             (r"/auth/logout", AuthLogoutHandler),
             (r"/chatsocket", ChatSocketHandler), 
+        ]
+        settings = dict(
+            cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
+            login_url="/auth/login",
+            xsrf_cookies=True,
+            template_path = os.path.join(os.path.dirname(__file__), "templates"),
+            static_path = os.path.join(os.path.dirname(__file__), "static"),
+            debug=True,
+        )
+        tornado.web.Application.__init__(self, handlers, **settings)
+
+        # Have one global connection to the blog DB across all handlers
+        self.db = torndb.Connection(
+            host=options.mysql_host, database=options.mysql_database,
+            user=options.mysql_user, password=options.mysql_password)
+
+class WechatDataReciever(tornado.web.Application):
+
+    def __init__(self):
+        handlers = [
             (r"/wechat",GetDataFromWechat), 
         ]
         settings = dict(
             cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
             login_url="/auth/login",
-#            xsrf_cookies=True,
+#            xsrf_cookies=True, #必须禁用 xsrf 才能正常接受微信过来的消息
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
             debug=True,
@@ -61,14 +82,13 @@ class IndexHandler(BaseHandler):
 
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
 
-    cache = []
-    cache_size = 200
+    waiters = set()
+    cache =  []
 
     def get_current_user(self):
         user_json = self.get_secure_cookie("chatdemo_user")
         if not user_json: return None
-        return json.loads(user_json).get("claimed_id")
-#        return tornado.escape.json_decode(user_json)
+        return tornado.escape.json_decode(user_json)
 
     def get_compression_options(self):
         # Non-None enables compression with default options.
@@ -76,31 +96,45 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
 
 #    @tornado.web.authenticated
     def open(self):
-#        for row in  self.application.db.iter("show tables"):
-#            print row
-        print self.get_current_user()
+        if not self.get_current_user():
+            return
+        self.waiters.add(self)
 
     def on_close(self):
         pass
 
     def on_message(self, message):
-        print "got message %r" % message
+#        print "got message %r" % message
         self.event_handler(message)
+
+    @classmethod
+    def update_cache(cls):
+        cls.cache = GetDataFromWechat.cache
+        GetDataFromWechat.cache = []
+        for msg in cls.cache:
+            for waiter in cls.waiters:
+                echo_back = {
+                    "event":"newMessage",
+                    "room":msg.source,
+                    "msg":msg.content,
+                    "username":msg.source,
+                    "type":msg.type,
+                    "timestamp":int(time.time()),
+                    }
+
+            waiter.write_message(json.dumps(echo_back))
 
     def event_handler(self,message):
         msg = json.loads(message)
-        print msg
         if msg["event"] == "newMessage":
             newMessage = {
-#                "event":"newMessage",
-#                "room":msg['room'],
                 "content":msg['msg'],
                 "username":msg["room"],
                 "type":"text",
-#                "timestamp":int(time.time()),
                 }
+
             SendDataToWechat(newMessage).send_data()
-#            self.write_message(json.dumps(newMessage))
+
             data_source = 1
             customer_name = msg["room"] 
             content_type = "text"
@@ -109,24 +143,30 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
             employee = self.get_current_user()
             self.application.db.execute("insert into out_data(data_source,customer_name,content_type,create_time,content,employee) \
 values(%s,%s,%s,%s,%s,%s)", data_source,customer_name,content_type,create_time,content,employee)
-#            self.application.db.execute("insert into out_data",)
+            echo_back = {
+                "event":"newMessage",
+                "room":msg['room'],
+                "msg":msg['msg'],
+                "username":self.get_current_user(),
+                "type":"text",
+                "timestamp":int(time.time()),
+                }
+
+            self.write_message(json.dumps(echo_back)) #回显，表示收到消息
 
         elif msg["event"] == "queryUnhandled":
             #"send uhandled users "
             max_times = self.application.db.query("select max(a.insert_time),max(b.insert_time),a.customer_name from in_data as a ,out_data as b where a.customer_name = b.customer_name group by a.customer_name, b.customer_name")
-            print max_times
-
             handled = set()
             for max_time in max_times: 
                 if max_time.get("max(b.insert_time)") < max_time.get("max(a.insert_time)"):
-                    handled.add(max_time.get("a.customer_name"))
+                    if max_time.get("a.customer_name"):
+                        handled.add(max_time.get("a.customer_name"))
             handled_string = ""
-            for x in iter(handled):
+            for x in handled:
                 handled_string += x + ","
-            print handled_string
             unhandled = self.application.db.query("select distinct(customer_name) from in_data where customer_name not in (%s)",handled_string)
             users = []
-            [{"username":"user1","msg":"15"},{"username":"user2","msg":"14"},],
             for user in  unhandled:
                 users.append(
                     {
@@ -140,9 +180,8 @@ values(%s,%s,%s,%s,%s,%s)", data_source,customer_name,content_type,create_time,c
                 }
             self.write_message(json.dumps(newMessage))
 
-
         elif msg["event"] == "getUnhandledUser":
-            print "send uhandled"
+#            print "send uhandled"
             messages = self.application.db.query("select content,content_type,create_time  from in_data where customer_name = %s",msg["username"])
             message = []
             for msgx in messages:
@@ -164,14 +203,15 @@ values(%s,%s,%s,%s,%s,%s)", data_source,customer_name,content_type,create_time,c
         else:
             pass
 
+def echo():
+    print "echo called"
 ##MAIN
 if __name__ == '__main__':
-    newMessage = {
-        "file":"/home/shen/IMG_5581.JPG",
-        "type":"text",
-        }
-    send_msg = SendDataToWechat(newMessage)
-    send_msg.send_data()
+
     app = Application()
     app.listen(8888)
+    app2 = WechatDataReciever()
+    app2.listen(9999) #微信服务器仅支持80端口的post 用wecheat 可以不是80端口
+    prd = tornado.ioloop.PeriodicCallback(ChatSocketHandler.update_cache, 5000)
+    prd.start()
     tornado.ioloop.IOLoop.instance().start()

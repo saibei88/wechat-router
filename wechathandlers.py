@@ -18,6 +18,7 @@ import time
 import datetime
 import os
 import urllib,mimetypes
+from settings import MEDIA_DIR
 
 config_file = open("./wechat.config")
 rawdata = config_file.readline()
@@ -28,7 +29,7 @@ SECRET = configs.get("SECRET")
 APPID = configs.get("APPID")
 EXPIRED_TIME = configs.get("EXPIRED_TIME")
 ACCESS_TOKEN = configs.get("ACCESS_TOKEN")
-STORAGE_DIR = "/home/shen/temp/media_files/"
+STORAGE_DIR = MEDIA_DIR
 
 def token_check():
     global EXPIRED_TIME
@@ -45,6 +46,7 @@ def token_check():
 class GetDataFromWechat(BaseHandler):
 
     http_client =  AsyncHTTPClient()
+    cache = []
 
     def get(self):
         """完成url输入之后，微信验证url有效性"""
@@ -52,7 +54,6 @@ class GetDataFromWechat(BaseHandler):
         timestamp = self.request.arguments.get('timestamp', '')
         nonce = self.request.arguments.get('nonce', '')
         echo_str = self.request.arguments.get('echostr', '')
-
         try:
             token_check()
             check_signature(ACCESS_TOKEN, signature, timestamp, nonce)
@@ -61,7 +62,7 @@ class GetDataFromWechat(BaseHandler):
         self.write(echo_str)
 
     def post(self):
-        print('Raw message: \n%s' % self.request.body)
+#        print('Raw message: \n%s' % self.request.body)
         token_check()
 #        crypto = WeChatCrypto(ACCESS_TOKEN, EncodingAESKey, APPID)
         try:
@@ -75,7 +76,8 @@ class GetDataFromWechat(BaseHandler):
 #            
 #            self.write("success")
             msg = parse_message(self.request.body)
-            print "message time ",msg.time
+            self.cache.append(msg)
+#            print "message time ",msg.time
             data_source = 1
             customer_name = msg.source 
             content_type = msg.type

@@ -1,3 +1,5 @@
+#coding:utf8
+
 import tornado.auth
 import tornado.web
 from tornado import gen
@@ -18,6 +20,8 @@ class AuthLogoutHandler(BaseHandler):
         self.write("You are now logged out")
 
 class NtseMixin(tornado.auth.OpenIdMixin):
+    """ 根据网易内网 openid 服务器修改openid 的登录参数"""
+
     _OPENID_ENDPOINT = "https://login.netease.com/openid"
 
     def _openid_args(self, callback_uri, ax_attrs=[], oauth_scope=None):

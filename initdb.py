@@ -1,9 +1,9 @@
 #!/usr/bin/python
 #coding:utf8
 import MySQLdb
- 
+from settings import DATABASE
 try:
-    conn=MySQLdb.connect(host='localhost',user='test',passwd='test',db='test',port=3306)
+    conn=MySQLdb.connect(host='localhost',user = DATABASE.get("username","test"),passwd = DATABASE.get("password", "test"),db = DATABASE.get("database","test"), port = DATABASE.get("port",3306))
     cur=conn.cursor()
     cur.execute('create table in_data(\
 id int(11) AUTO_INCREMENT PRIMARY KEY, \
