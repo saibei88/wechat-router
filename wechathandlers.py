@@ -78,7 +78,7 @@ class GetDataFromWechat(BaseHandler):
 #            self.write("success")
             msg = parse_message(self.request.body)
 #            import main
-            signal.alarm(1)
+            os.kill(os.getpid(),signal.SIGUSR1)
             self.cache.append(msg)
 #            main.ChatSocketHandler.update_cache()
 #            print "message time ",msg.time

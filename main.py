@@ -159,14 +159,16 @@ values(%s,%s,%s,%s,%s,%s)", data_source,customer_name,content_type,create_time,c
             #"send uhandled users "
             max_times = self.application.db.query("select max(a.insert_time),max(b.insert_time),a.customer_name from in_data as a ,out_data as b where a.customer_name = b.customer_name group by a.customer_name, b.customer_name")
             handled = set()
+#            print max_times
             for max_time in max_times: 
-                if max_time.get("max(b.insert_time)") < max_time.get("max(a.insert_time)"):
-                    if max_time.get("a.customer_name"):
-                        handled.add(max_time.get("a.customer_name"))
+                if max_time.get("max(b.insert_time)") > max_time.get("max(a.insert_time)"):
+                    if max_time.get("customer_name"):
+                        handled.add(max_time.get("customer_name"))
             handled_string = ""
             for x in handled:
                 handled_string += x + ","
-            unhandled = self.application.db.query("select distinct(customer_name) from in_data where customer_name not in (%s)",handled_string)
+#            print handled_string
+            unhandled = self.application.db.query("select distinct(customer_name) from in_data where customer_name not in (%s)",handled_string[:-1])
             users = []
             for user in  unhandled:
                 users.append(
@@ -214,7 +216,7 @@ if __name__ == '__main__':
     app2 = WechatDataReciever()
     app2.listen(9999) #微信服务器仅支持80端口的post 用wecheat 可以不是80端口
     loop = tornado.ioloop.IOLoop.instance()
-    signal.signal(signal.SIGALRM,lambda a,b:loop.add_callback_from_signal(ChatSocketHandler.update_cache))
+    signal.signal(signal.SIGUSR1,lambda a,b:loop.add_callback_from_signal(ChatSocketHandler.update_cache))
     
 #    prd = tornado.ioloop.PeriodicCallback(ChatSocketHandler.update_cache, 5000)
 #    prd.start()
