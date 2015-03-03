@@ -23,6 +23,7 @@ import torndb
 from auth import AuthLoginHandler,AuthLogoutHandler,BaseHandler 
 from wechathandlers import GetDataFromWechat,SendDataToWechat
 from settings import DATABASE
+import signal
 
 define("mysql_host", default = DATABASE.get("host","localhost") + ":" + str(DATABASE.get("port","3306")), help="blog database host")
 define("mysql_database", default= DATABASE.get("database","test") , help="blog database name")
@@ -212,6 +213,9 @@ if __name__ == '__main__':
     app.listen(8888)
     app2 = WechatDataReciever()
     app2.listen(9999) #微信服务器仅支持80端口的post 用wecheat 可以不是80端口
-    prd = tornado.ioloop.PeriodicCallback(ChatSocketHandler.update_cache, 5000)
-    prd.start()
-    tornado.ioloop.IOLoop.instance().start()
+    loop = tornado.ioloop.IOLoop.instance()
+    signal.signal(signal.SIGALRM,lambda a,b:loop.add_callback_from_signal(ChatSocketHandler.update_cache))
+    
+#    prd = tornado.ioloop.PeriodicCallback(ChatSocketHandler.update_cache, 5000)
+#    prd.start()
+    loop.start()
