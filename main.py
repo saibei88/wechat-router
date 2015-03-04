@@ -157,13 +157,13 @@ values(%s,%s,%s,%s,%s,%s)", data_source,customer_name,content_type,create_time,c
 
         elif msg["event"] == "queryUnhandled":
             #"send uhandled users "
-            max_times = self.application.db.query("select max(a.insert_time),max(b.insert_time),a.customer_name from in_data as a ,out_data as b where a.customer_name = b.customer_name group by a.customer_name, b.customer_name")
+            max_times = self.application.db.query("select a.customer_name from in_data as a ,out_data as b where a.customer_name = b.customer_name group by a.customer_name, b.customer_name having max(a.insert_time) < max(b.insert_time) ")
             handled = set()
 #            print max_times
-            for max_time in max_times: 
-                if max_time.get("max(b.insert_time)") > max_time.get("max(a.insert_time)"):
-                    if max_time.get("customer_name"):
-                        handled.add(max_time.get("customer_name"))
+#            for max_time in max_times: 
+#                if max_time.get("max(b.insert_time)") > max_time.get("max(a.insert_time)"):
+            if max_time.get("customer_name"):
+                handled.add(max_time.get("customer_name"))
             handled_string = ""
             for x in handled:
                 handled_string += x + ","
