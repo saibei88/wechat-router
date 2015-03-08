@@ -37,32 +37,12 @@ class Application(tornado.web.Application):
             (r"/auth/login", AuthLoginHandler),
             (r"/auth/logout", AuthLogoutHandler),
             (r"/chatsocket", ChatSocketHandler), 
-        ]
-        settings = dict(
-            cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
-            login_url="/auth/login",
-            xsrf_cookies=True,
-            template_path = os.path.join(os.path.dirname(__file__), "templates"),
-            static_path = os.path.join(os.path.dirname(__file__), "static"),
-            debug=True,
-        )
-        tornado.web.Application.__init__(self, handlers, **settings)
-
-        # Have one global connection to the blog DB across all handlers
-        self.db = torndb.Connection(
-            host=options.mysql_host, database=options.mysql_database,
-            user=options.mysql_user, password=options.mysql_password)
-
-class WechatDataReciever(tornado.web.Application):
-
-    def __init__(self):
-        handlers = [
             (r"/wechat",GetDataFromWechat), 
         ]
         settings = dict(
             cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
             login_url="/auth/login",
-#            xsrf_cookies=True, #必须禁用 xsrf 才能正常接受微信过来的消息
+            xsrf_cookies=True,
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
             debug=True,
@@ -213,8 +193,6 @@ if __name__ == '__main__':
 
     app = Application()
     app.listen(8888)
-    app2 = WechatDataReciever()
-    app2.listen(9999) #微信服务器仅支持80端口的post 用wecheat 可以不是80端口
     loop = tornado.ioloop.IOLoop.instance()
     signal.signal(signal.SIGUSR1,lambda a,b:loop.add_callback_from_signal(ChatSocketHandler.update_cache))
     

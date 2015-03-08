@@ -49,6 +49,10 @@ class GetDataFromWechat(BaseHandler):
     http_client =  AsyncHTTPClient()
     cache = []
 
+    def check_xsrf_cookie(self):
+        """禁用csrf"""
+        pass
+
     def get(self):
         """完成url输入之后，微信验证url有效性"""
         signature = self.request.arguments.get('signature', '')
