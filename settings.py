@@ -2,11 +2,11 @@
 #coding:utf8
 
 DATABASE = {
-    "host":"localhost",
-    "port":"3306",
-    "database":"qn2",
-    "username":"qn2",
-    "password":"1234",
+    "host": "localhost",
+    "port": "3306",
+    "database": "test",
+    "username": "root",
+    "password": "236788",
     }
 
 MEDIA_DIR = "~/temp/media_file"

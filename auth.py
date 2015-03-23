@@ -6,18 +6,22 @@ from tornado import gen
 import urlparse
 from tornado.auth import AuthError
 
-class BaseHandler(tornado.web.RequestHandler):
 
+class BaseHandler(tornado.web.RequestHandler):
+    """base handler """
     def get_current_user(self):
         user_json = self.get_secure_cookie("chatdemo_user")
-        if not user_json: return None
+        if not user_json:
+            return None
         return tornado.escape.json_decode(user_json)
 
 
 class AuthLogoutHandler(BaseHandler):
+
     def get(self):
         self.clear_cookie("chatdemo_user")
         self.write("You are now logged out")
+
 
 class NtseMixin(tornado.auth.OpenIdMixin):
     """ 根据网易内网 openid 服务器修改openid 的登录参数"""
@@ -45,9 +49,9 @@ class NtseMixin(tornado.auth.OpenIdMixin):
             required = []
             if "name" in ax_attrs:
 #                ax_attrs -= set(["fullname", "nickname"])
-                required += ["fullname", "nickname","email"]
+                required += ["fullname", "nickname", "email"]
             args["openid.sreg.required"] = ",".join(required)
-            
+
         if oauth_scope:
             args.update({
                 "openid.ns.oauth":
@@ -86,9 +90,9 @@ class NtseMixin(tornado.auth.OpenIdMixin):
                 return u("")
             return self.get_argument(ax_name, u(""))
 
-        email = self.request.arguments.get("openid.sreg.email",None)
-        fullname = self.request.arguments.get("openid.sreg.fullname",None)
-        nickname = self.request.arguments.get("openid.sreg.nickname",None)
+        email = self.request.arguments.get("openid.sreg.email", None)
+        fullname = self.request.arguments.get("openid.sreg.fullname", None)
+        nickname = self.request.arguments.get("openid.sreg.nickname", None)
         user = dict()
         name_parts = []
         if email:
@@ -101,7 +105,8 @@ class NtseMixin(tornado.auth.OpenIdMixin):
         if claimed_id:
             user["claimed_id"] = claimed_id
         future.set_result(user)
-        
+
+
 class AuthLoginHandler(BaseHandler, NtseMixin):
 
     @gen.coroutine
@@ -109,7 +114,10 @@ class AuthLoginHandler(BaseHandler, NtseMixin):
         if self.get_argument("openid.mode", None):
             user = yield self.get_authenticated_user()
             self.set_secure_cookie("chatdemo_user",
-                                   tornado.escape.json_encode(user.get("email")))
+                                   tornado.escape.json_encode(
+                                       user.get("email")
+                                       )
+                                   )
             self.redirect("/")
             return
         self.authenticate_redirect(ax_attrs=["name"])
