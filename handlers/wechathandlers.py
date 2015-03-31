@@ -23,7 +23,7 @@ from settings import MEDIA_DIR
 import signal
 
 
-config_file = open("./wechat.config")
+config_file = open("/home/shen/websocket_epay/handlers/wechat.config")
 rawdata = config_file.readline()
 configs = json.loads(rawdata)
 config_file.close()
@@ -71,10 +71,12 @@ class GetDataFromWechat(BaseHandler):
         self.write(echo_str)
 
     def post(self):
+        """接受微信服务器post的数据"""
 #        print('Raw message: \n%s' % self.request.body)
         token_check()
 #        crypto = WeChatCrypto(ACCESS_TOKEN, EncodingAESKey, APPID)
         try:
+#      选择数据加密时候使用
 #            msg = crypto.decrypt_message(
 #                self.request.body,
 #                msg_signature,
@@ -84,7 +86,6 @@ class GetDataFromWechat(BaseHandler):
 #            print('Descypted message: \n%s' % ms)
 #            self.write("success")
             msg = parse_message(self.request.body)
-#            import main
             os.kill(os.getpid(), signal.SIGUSR1)
             self.cache.append(msg)
 #            main.ChatSocketHandler.update_cache()
@@ -95,7 +96,7 @@ class GetDataFromWechat(BaseHandler):
             create_time = datetime.datetime.fromtimestamp(msg.time)
             msg_id = msg.id
             content = ""
-#微信服务器post的数据链接可以直接回写回复信息，xml格式
+#  微信服务器post的数据链接可以直接回写回复信息，xml格式
             if msg.type == 'text':
 #                print msg.content
                 content = msg.content
@@ -199,7 +200,7 @@ class SendDataToWechat(object):
     def handle_response(self, response):
         resp = json.loads(response.body)
         if not resp.get("errcode"):
-#----currently for image and voice reply----
+#  ----currently for image and voice reply----
             content = {
 #                "source":self.msg.get("username"),
 #                "target":self.msg.get("room"), 
@@ -208,7 +209,7 @@ class SendDataToWechat(object):
                 }
             return content
 
-x
+
 def encode_multipart_formdata(fields, files):
     """
     fields is a sequence of (name, value) elements for regular form fields.
@@ -239,9 +240,3 @@ def encode_multipart_formdata(fields, files):
 
 def get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-
-#        self.write(crypto.encrypt_message(
-#            reply.render(),
-#            nonce,
-#            timestamp
-#        ))
